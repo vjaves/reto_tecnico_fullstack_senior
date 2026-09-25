@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Atlantic.Pedidos.Api</name>
+    </assembly>
+    <members>
+        <member name="T:Atlantic.Pedidos.Api.Admin.CircuitoSqlHealthCheck">
+            <summary>
+            Expone el estado del circuit breaker de SQL como health check: Closed = sano, HalfOpen = degradado
+            (probando si la BD volvió), Open/Isolated = no disponible.
+            </summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Admin.CircuitoSqlHealthCheck.#ctor(Polly.CircuitBreaker.CircuitBreakerStateProvider)">
+            <summary>
+            Expone el estado del circuit breaker de SQL como health check: Closed = sano, HalfOpen = degradado
+            (probando si la BD volvió), Open/Isolated = no disponible.
+            </summary>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Controllers.AdminController">
+            <summary>Panel de administración: gestión de usuarios y estado del sistema. Sólo rol Admin.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AdminController.#ctor(Atlantic.Pedidos.Application.Usuarios.IUsuarioAdminService,Atlantic.Pedidos.Api.Admin.EstadoSistemaService)">
+            <summary>Panel de administración: gestión de usuarios y estado del sistema. Sólo rol Admin.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AdminController.Usuarios(System.String,System.Threading.CancellationToken)">
+            <summary>Usuarios de la empresa, con su estado de acceso (activo, bloqueado, intentos fallidos).</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AdminController.CrearUsuario(Atlantic.Pedidos.Application.Usuarios.CrearUsuarioRequest,System.Threading.CancellationToken)">
+            <response code="409">El email o el nombre de usuario ya existen.</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AdminController.ActualizarUsuario(System.Int32,Atlantic.Pedidos.Application.Usuarios.ActualizarUsuarioRequest,System.Threading.CancellationToken)">
+            <summary>Datos, rol y acceso. Un cambio de rol o la desactivación cierran las sesiones abiertas del usuario.</summary>
+            <response code="422">Autogestión (quitarse Admin o desactivarse) o se quedaría la empresa sin administrador.</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AdminController.RestablecerClave(System.Int32,Atlantic.Pedidos.Application.Usuarios.RestablecerClaveRequest,System.Threading.CancellationToken)">
+            <summary>Asigna una clave nueva, desbloquea la cuenta y revoca los tokens emitidos antes.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AdminController.Sistema(System.Threading.CancellationToken)">
+            <summary>Salud de la BD, estado del circuit breaker y parámetros de seguridad y resiliencia vigentes.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.AuthController.Login(Atlantic.Pedidos.Application.Auth.LoginRequest,System.Threading.CancellationToken)">
+            <summary>Valida credenciales y devuelve un JWT Bearer con expiración.</summary>
+            <response code="200">Token emitido.</response>
+            <response code="400">Email o contraseña con formato inválido.</response>
+            <response code="401">Credenciales incorrectas o cuenta bloqueada.</response>
+            <response code="429">Demasiados intentos desde la misma IP.</response>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Controllers.CatalogosController">
+            <summary>Datos para los combos del formulario de pedido, acotados a la empresa del usuario.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.CatalogosController.#ctor(Atlantic.Pedidos.Application.Catalogos.ICatalogoService)">
+            <summary>Datos para los combos del formulario de pedido, acotados a la empresa del usuario.</summary>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Controllers.ClientesController">
+            <summary>Mantenedor de clientes. Crear y editar: cualquier usuario; eliminar (baja lógica): Admin.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ClientesController.#ctor(Atlantic.Pedidos.Application.Clientes.IClienteService)">
+            <summary>Mantenedor de clientes. Crear y editar: cualquier usuario; eliminar (baja lógica): Admin.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ClientesController.Listar(Atlantic.Pedidos.Application.Common.MaestroFiltro,System.Threading.CancellationToken)">
+            <summary>Lista paginada. <c>estado</c>: activos | inactivos (vacío = todos).</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ClientesController.Crear(Atlantic.Pedidos.Application.Clientes.GuardarClienteRequest,System.Threading.CancellationToken)">
+            <response code="400">Datos inválidos, incluido un documento que no cumple el formato de su tipo (DNI 8, RUC 11 dígitos).</response>
+            <response code="409">Ya existe un cliente con ese documento.</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ClientesController.Eliminar(System.Int32,System.Threading.CancellationToken)">
+            <response code="422">El cliente tiene pedidos en curso.</response>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Controllers.ProductosController">
+            <summary>Mantenedor de productos. Crear y editar: cualquier usuario; eliminar (baja lógica): Admin.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ProductosController.#ctor(Atlantic.Pedidos.Application.Productos.IProductoService)">
+            <summary>Mantenedor de productos. Crear y editar: cualquier usuario; eliminar (baja lógica): Admin.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ProductosController.Listar(Atlantic.Pedidos.Application.Common.MaestroFiltro,System.Threading.CancellationToken)">
+            <summary>Lista paginada. <c>estado</c>: activos | inactivos (vacío = todos).</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ProductosController.Crear(Atlantic.Pedidos.Application.Productos.GuardarProductoRequest,System.Threading.CancellationToken)">
+            <response code="409">Ya existe un producto con ese código.</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.ProductosController.Eliminar(System.Int32,System.Threading.CancellationToken)">
+            <response code="422">El producto está en pedidos en curso.</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.PedidosController.Listar(Atlantic.Pedidos.Application.Pedidos.PedidoFiltro,System.Threading.CancellationToken)">
+            <summary>Lista paginada con búsqueda (número, cliente o documento), estado, rango de fechas y orden.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.PedidosController.SiguienteNumero(System.Threading.CancellationToken)">
+            <summary>Sugerencia del próximo número correlativo (PED-###).</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.PedidosController.Resumen(System.Threading.CancellationToken)">
+            <summary>Cantidad de pedidos vigentes por estado (tarjetas del listado).</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.PedidosController.Crear(Atlantic.Pedidos.Application.Pedidos.CrearPedidoRequest,System.Threading.CancellationToken)">
+            <response code="201">Pedido creado.</response>
+            <response code="400">Datos con formato inválido.</response>
+            <response code="409">El número de pedido ya existe.</response>
+            <response code="422">Regla de negocio incumplida (p. ej. total menor o igual a 0).</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.PedidosController.Actualizar(System.Int32,Atlantic.Pedidos.Application.Pedidos.ActualizarPedidoRequest,System.Threading.CancellationToken)">
+            <response code="200">Pedido actualizado; incluye el nuevo rowVersion.</response>
+            <response code="409">Número duplicado, o el pedido cambió desde que se leyó (rowVersion).</response>
+            <response code="422">Regla de negocio incumplida (total, transición de estado, pedido entregado).</response>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Controllers.PedidosController.Eliminar(System.Int32,System.Threading.CancellationToken)">
+            <summary>Eliminación lógica (el pedido pasa a Anulado). Sólo rol Admin.</summary>
+            <response code="204">Pedido anulado.</response>
+            <response code="403">El usuario no tiene rol Admin.</response>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.ErrorHandling.GlobalExceptionHandler">
+            <summary>
+            Punto único donde una excepción se convierte en respuesta HTTP (RFC 7807).
+            Los controladores no llevan try/catch; los servicios sólo expresan qué falló.
+            </summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.ErrorHandling.GlobalExceptionHandler.#ctor(Microsoft.AspNetCore.Http.IProblemDetailsService,Microsoft.Extensions.Logging.ILogger{Atlantic.Pedidos.Api.ErrorHandling.GlobalExceptionHandler})">
+            <summary>
+            Punto único donde una excepción se convierte en respuesta HTTP (RFC 7807).
+            Los controladores no llevan try/catch; los servicios sólo expresan qué falló.
+            </summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.ErrorHandling.GlobalExceptionHandler.ACamelCase(System.String)">
+            <summary>"Detalles[0].Cantidad" → "detalles[0].cantidad", para que el front lo asocie al campo.</summary>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Middleware.CorrelationIdMiddleware">
+            <summary>
+            Correlation id: reutiliza el X-Correlation-ID entrante o genera uno, lo devuelve en la respuesta
+            y lo agrega a todas las líneas de log de la petición.
+            </summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Middleware.CorrelationIdMiddleware.#ctor(Microsoft.AspNetCore.Http.RequestDelegate)">
+            <summary>
+            Correlation id: reutiliza el X-Correlation-ID entrante o genera uno, lo devuelve en la respuesta
+            y lo agrega a todas las líneas de log de la petición.
+            </summary>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Middleware.SecurityHeadersMiddleware">
+            <summary>Headers defensivos básicos para una API que sólo devuelve JSON.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Middleware.SecurityHeadersMiddleware.#ctor(Microsoft.AspNetCore.Http.RequestDelegate)">
+            <summary>Headers defensivos básicos para una API que sólo devuelve JSON.</summary>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Security.CurrentUser">
+            <summary>Lee la identidad desde los claims del JWT validado por el middleware.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Security.CurrentUser.#ctor(Microsoft.AspNetCore.Http.IHttpContextAccessor)">
+            <summary>Lee la identidad desde los claims del JWT validado por el middleware.</summary>
+        </member>
+        <member name="T:Atlantic.Pedidos.Api.Security.SesionRevocadaException">
+            <summary>El token es válido criptográficamente pero la cuenta ya no lo respalda.</summary>
+        </member>
+        <member name="M:Atlantic.Pedidos.Api.Security.SesionRevocadaException.#ctor(System.String)">
+            <summary>El token es válido criptográficamente pero la cuenta ya no lo respalda.</summary>
+        </member>
+        <member name="T:Program">
+            <summary>Expuesto para pruebas de integración con WebApplicationFactory.</summary>
+        </member>
+    </members>
+</doc>

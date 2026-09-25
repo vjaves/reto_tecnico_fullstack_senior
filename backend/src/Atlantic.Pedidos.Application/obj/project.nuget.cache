@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "v9TXolQ1f4c=",
+  "success": true,
+  "projectFilePath": "D:\\ExamenReact\\AtlanticPedidos\\backend\\src\\Atlantic.Pedidos.Application\\Atlantic.Pedidos.Application.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\VICTOR\\.nuget\\packages\\fluentvalidation\\11.11.0\\fluentvalidation.11.11.0.nupkg.sha512",
+    "C:\\Users\\VICTOR\\.nuget\\packages\\fluentvalidation.dependencyinjectionextensions\\11.11.0\\fluentvalidation.dependencyinjectionextensions.11.11.0.nupkg.sha512",
+    "C:\\Users\\VICTOR\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\9.0.9\\microsoft.extensions.dependencyinjection.abstractions.9.0.9.nupkg.sha512",
+    "C:\\Users\\VICTOR\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\9.0.9\\microsoft.extensions.logging.abstractions.9.0.9.nupkg.sha512",
+    "C:\\Users\\VICTOR\\.nuget\\packages\\microsoft.extensions.options\\9.0.9\\microsoft.extensions.options.9.0.9.nupkg.sha512",
+    "C:\\Users\\VICTOR\\.nuget\\packages\\microsoft.extensions.primitives\\9.0.9\\microsoft.extensions.primitives.9.0.9.nupkg.sha512"
+  ],
+  "logs": []
+}

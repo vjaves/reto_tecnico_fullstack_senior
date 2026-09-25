@@ -1,0 +1,829 @@
+{
+  "info": {
+    "name": "Atlantic Pedidos API",
+    "description": "Autenticación JWT y CRUD de pedidos.\n\nOrden sugerido: ejecutar la colección completa con el Runner. Los tests guardan token, id y rowVersion en variables de colección, así que cada request usa el resultado del anterior.\n\nUsuarios semilla (clave 123456): admin@email.com (Admin) y user@email.com (User).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7080" },
+    { "key": "token", "value": "" },
+    { "key": "userToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "numeroPedido", "value": "" },
+    { "key": "pedidoId", "value": "" },
+    { "key": "rowVersion", "value": "" },
+    { "key": "lineaId", "value": "" },
+    { "key": "clienteId", "value": "" },
+    { "key": "rucPrueba", "value": "" },
+    { "key": "productoId", "value": "" },
+    { "key": "codigoPrueba", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0. Health",
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "GET",
+        "url": "{{baseUrl}}/health"
+      },
+      "event": [
+        { "listen": "test", "script": { "exec": ["pm.test('API y BD disponibles', () => pm.response.to.have.status(200));"] } }
+      ]
+    },
+    {
+      "name": "1. Auth",
+      "item": [
+        {
+          "name": "Login Admin",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@email.com\",\n  \"password\": \"123456\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con token y expiresIn', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.token).to.be.a('string');",
+                  "  pm.expect(r.expiresIn).to.eql(3600);",
+                  "  pm.expect(r.usuario.rol).to.eql('Admin');",
+                  "  pm.collectionVariables.set('adminToken', r.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login User",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"user@email.com\",\n  \"password\": \"123456\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con rol User', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.usuario.rol).to.eql('User');",
+                  "  pm.collectionVariables.set('userToken', r.token);",
+                  "  pm.collectionVariables.set('token', r.token);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con clave incorrecta → 401",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@email.com\",\n  \"password\": \"incorrecta\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 CREDENCIALES_INVALIDAS', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('CREDENCIALES_INVALIDAS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con email inválido → 400",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"no-es-un-email\",\n  \"password\": \"\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 con errores por campo', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  const e = pm.response.json().errors;",
+                  "  pm.expect(e).to.have.property('email');",
+                  "  pm.expect(e).to.have.property('password');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Pedidos (CRUD)",
+      "item": [
+        {
+          "name": "Listar sin token → 401",
+          "request": { "auth": { "type": "noauth" }, "method": "GET", "url": "{{baseUrl}}/api/pedidos" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('401 TOKEN_REQUERIDO', () => {",
+                  "  pm.response.to.have.status(401);",
+                  "  pm.expect(pm.response.json().code).to.eql('TOKEN_REQUERIDO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar pedidos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 paginado', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.items).to.be.an('array');",
+                  "  pm.expect(r).to.have.property('totalCount');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar con filtros (búsqueda, estado, fechas, orden)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/pedidos?buscar=perez&estado=Registrado&desde=2025-01-01&hasta=2026-12-31&ordenarPor=total&descendente=true&page=1&pageSize=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pedidos"],
+              "query": [
+                { "key": "buscar", "value": "perez" },
+                { "key": "estado", "value": "Registrado" },
+                { "key": "desde", "value": "2025-01-01" },
+                { "key": "hasta", "value": "2026-12-31" },
+                { "key": "ordenarPor", "value": "total" },
+                { "key": "descendente", "value": "true" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }
+          ]
+        },
+        {
+          "name": "Siguiente número sugerido",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos/siguiente-numero" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con PED-###', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const n = pm.response.json().numeroPedido;",
+                  "  pm.expect(n).to.match(/^PED-\\d+$/);",
+                  "  pm.collectionVariables.set('numeroPedido', n);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear pedido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/pedidos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroPedido\": \"{{numeroPedido}}\",\n  \"clienteId\": 1,\n  \"sucursalId\": 1,\n  \"monedaId\": 1,\n  \"fecha\": \"2025-01-10\",\n  \"detalles\": [\n    { \"productoId\": 4, \"cantidad\": 1, \"precioVenta\": 250.75, \"descuento\": 0 }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Registrado con total calculado', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.total).to.eql(250.75);",
+                  "  pm.expect(r.estado).to.eql('Registrado');",
+                  "  pm.expect(pm.response.headers.get('Location')).to.include('/api/pedidos/' + r.id);",
+                  "  pm.collectionVariables.set('pedidoId', r.id);",
+                  "  pm.collectionVariables.set('rowVersion', r.rowVersion);",
+                  "  pm.collectionVariables.set('lineaId', r.detalles[0].id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear con número duplicado → 409",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/pedidos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroPedido\": \"PED-001\",\n  \"clienteId\": 1,\n  \"sucursalId\": 1,\n  \"monedaId\": 1,\n  \"fecha\": \"2025-01-10\",\n  \"detalles\": [ { \"productoId\": 4, \"cantidad\": 1, \"precioVenta\": 10 } ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 PEDIDO_NUMERO_DUPLICADO', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().code).to.eql('PEDIDO_NUMERO_DUPLICADO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear con total 0 → 422",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/pedidos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroPedido\": \"PED-TOTAL-CERO\",\n  \"clienteId\": 1,\n  \"sucursalId\": 1,\n  \"monedaId\": 1,\n  \"fecha\": \"2025-01-10\",\n  \"detalles\": [ { \"productoId\": 4, \"cantidad\": 1, \"precioVenta\": 100, \"descuento\": 100 } ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 PEDIDO_TOTAL_INVALIDO', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().code).to.eql('PEDIDO_TOTAL_INVALIDO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear con datos inválidos → 400",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/pedidos",
+            "body": { "mode": "raw", "raw": "{\n  \"numeroPedido\": \"\",\n  \"clienteId\": 0,\n  \"detalles\": []\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 con errores por campo', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().errors).to.include.keys('numeroPedido', 'clienteId', 'detalles');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener pedido por id",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con detalle', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.numeroPedido).to.eql(pm.collectionVariables.get('numeroPedido'));",
+                  "  pm.expect(r.detalles).to.have.lengthOf(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar pedido (estado + líneas)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroPedido\": \"{{numeroPedido}}\",\n  \"clienteId\": 1,\n  \"sucursalId\": 1,\n  \"monedaId\": 1,\n  \"fecha\": \"2025-01-10\",\n  \"estado\": \"Confirmado\",\n  \"rowVersion\": \"{{rowVersion}}\",\n  \"detalles\": [\n    { \"id\": {{lineaId}}, \"productoId\": 4, \"cantidad\": 2, \"precioVenta\": 250.75, \"descuento\": 1.50 },\n    { \"productoId\": 5, \"cantidad\": 1, \"precioVenta\": 80 }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 Confirmado con nuevo total', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.estado).to.eql('Confirmado');",
+                  "  pm.expect(r.total).to.eql(580);",
+                  "  pm.expect(r.rowVersion).to.not.eql(pm.collectionVariables.get('rowVersion'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar con rowVersion viejo → 409",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numeroPedido\": \"{{numeroPedido}}\",\n  \"clienteId\": 1,\n  \"sucursalId\": 1,\n  \"monedaId\": 1,\n  \"fecha\": \"2025-01-10\",\n  \"estado\": \"Confirmado\",\n  \"rowVersion\": \"{{rowVersion}}\",\n  \"detalles\": [ { \"productoId\": 4, \"cantidad\": 1, \"precioVenta\": 250.75 } ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 PEDIDO_MODIFICADO (concurrencia optimista)', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().code).to.eql('PEDIDO_MODIFICADO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar como User → 403",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('403 ROL_INSUFICIENTE', () => {",
+                  "  pm.response.to.have.status(403);",
+                  "  pm.expect(pm.response.json().code).to.eql('ROL_INSUFICIENTE');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar como Admin (lógico) → 204",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}"
+          },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('204', () => pm.response.to.have.status(204));"] } }
+          ]
+        },
+        {
+          "name": "Obtener pedido eliminado → 404",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos/{{pedidoId}}" },
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('404: anulado ya no existe para el CRUD', () => pm.response.to.have.status(404));"] } }
+          ]
+        },
+        {
+          "name": "Eliminar pedido entregado (PED-004) → 422",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/pedidos/4"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 PEDIDO_ENTREGADO', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().code).to.eql('PEDIDO_ENTREGADO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Catálogos",
+      "item": [
+        { "name": "Clientes", "request": { "method": "GET", "url": "{{baseUrl}}/api/catalogos/clientes" } },
+        { "name": "Productos", "request": { "method": "GET", "url": "{{baseUrl}}/api/catalogos/productos" } },
+        { "name": "Monedas", "request": { "method": "GET", "url": "{{baseUrl}}/api/catalogos/monedas" } },
+        { "name": "Sucursales", "request": { "method": "GET", "url": "{{baseUrl}}/api/catalogos/sucursales" } },
+        { "name": "Tipos de documento", "request": { "method": "GET", "url": "{{baseUrl}}/api/catalogos/tipos-documento" } },
+        { "name": "Unidades de medida", "request": { "method": "GET", "url": "{{baseUrl}}/api/catalogos/unidades-medida" } },
+        {
+          "name": "Resumen de pedidos por estado",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/pedidos/resumen" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con conteo por estado', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().porEstado).to.include.keys('Registrado', 'Confirmado', 'Despachado', 'Entregado');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Clientes (mantenedor)",
+      "item": [
+        {
+          "name": "Listar clientes",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/clientes?buscar=&estado=activos&page=1&pageSize=10" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "Crear cliente con DNI inválido → 400",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clientes",
+            "body": { "mode": "raw", "raw": "{\n  \"tipoDocumentoId\": 1,\n  \"numeroDocumento\": \"123\",\n  \"primerNombre\": \"Ana\",\n  \"apellidoPaterno\": \"Rojas\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 en numeroDocumento', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().errors).to.have.property('numeroDocumento');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear cliente (RUC)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// RUC aleatorio válido (prefijo 20 + 9 dígitos) para que la colección se pueda re-ejecutar.",
+                  "pm.collectionVariables.set('rucPrueba', '20' + String(Math.floor(Math.random() * 1e9)).padStart(9, '0'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 con razón social', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.razonSocial).to.eql('POSTMAN PRUEBAS S.A.C.');",
+                  "  pm.expect(r.primerNombre).to.be.null;",
+                  "  pm.collectionVariables.set('clienteId', r.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clientes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoDocumentoId\": 2,\n  \"numeroDocumento\": \"{{rucPrueba}}\",\n  \"razonSocial\": \"POSTMAN PRUEBAS S.A.C.\",\n  \"direccion\": \"Av. Arequipa 100, Lima\",\n  \"celular\": \"987654321\",\n  \"activo\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Crear cliente con documento duplicado → 409",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clientes",
+            "body": { "mode": "raw", "raw": "{\n  \"tipoDocumentoId\": 2,\n  \"numeroDocumento\": \"{{rucPrueba}}\",\n  \"razonSocial\": \"OTRA\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 CLIENTE_DOCUMENTO_DUPLICADO', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().code).to.eql('CLIENTE_DOCUMENTO_DUPLICADO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar cliente (desactivar)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"tipoDocumentoId\": 2,\n  \"numeroDocumento\": \"{{rucPrueba}}\",\n  \"razonSocial\": \"POSTMAN PRUEBAS S.A.C.\",\n  \"nombreComercial\": \"Postman\",\n  \"activo\": false\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 inactivo', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().activo).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar cliente con pedidos en curso → 422",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/clientes/1"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 CLIENTE_CON_PEDIDOS_EN_CURSO', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().code).to.eql('CLIENTE_CON_PEDIDOS_EN_CURSO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar cliente como Admin → 204",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/clientes/{{clienteId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('204', () => pm.response.to.have.status(204));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "5. Productos (mantenedor)",
+      "item": [
+        {
+          "name": "Listar productos",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/productos?buscar=&page=1&pageSize=10" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "Crear producto",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": ["pm.collectionVariables.set('codigoPrueba', 'PM-' + Date.now().toString().slice(-8));"] }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 con código normalizado', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(r.codigo).to.eql(pm.collectionVariables.get('codigoPrueba'));",
+                  "  pm.collectionVariables.set('productoId', r.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/productos",
+            "body": { "mode": "raw", "raw": "{\n  \"codigo\": \"{{codigoPrueba}}\",\n  \"nombre\": \"Cable HDMI 2 m\",\n  \"descripcion\": \"Creado desde Postman\",\n  \"unidadMedidaId\": 1,\n  \"activo\": true\n}" }
+          }
+        },
+        {
+          "name": "Crear producto con código duplicado → 409",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/productos",
+            "body": { "mode": "raw", "raw": "{\n  \"codigo\": \"P001\",\n  \"nombre\": \"Duplicado\",\n  \"unidadMedidaId\": 1\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('409 PRODUCTO_CODIGO_DUPLICADO', () => {",
+                  "  pm.response.to.have.status(409);",
+                  "  pm.expect(pm.response.json().code).to.eql('PRODUCTO_CODIGO_DUPLICADO');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar producto",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/productos/{{productoId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"codigo\": \"{{codigoPrueba}}\",\n  \"nombre\": \"Cable HDMI 3 m\",\n  \"unidadMedidaId\": 1,\n  \"activo\": true\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con nombre nuevo', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().nombre).to.eql('Cable HDMI 3 m');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar producto como User → 403",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/productos/{{productoId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] } }]
+        },
+        {
+          "name": "Eliminar producto como Admin → 204",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/productos/{{productoId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('204', () => pm.response.to.have.status(204));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "6. Panel de administración",
+      "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminToken}}", "type": "string" }] },
+      "item": [
+        {
+          "name": "Estado del sistema (BD + circuit breaker)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/sistema" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con estado del circuito', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  const r = pm.response.json();",
+                  "  pm.expect(['Closed', 'Open', 'HalfOpen', 'Isolated']).to.include(r.circuitoSql);",
+                  "  pm.expect(r.chequeos.map(c => c.nombre)).to.include.members(['sqlserver', 'circuito-sql']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado del sistema como User → 403",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{userToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/sistema"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('403', () => pm.response.to.have.status(403));"] } }]
+        },
+        {
+          "name": "Listar usuarios",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/usuarios" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 con admin y user', () => {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().map(u => u.email)).to.include.members(['admin@email.com', 'user@email.com']);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario con clave débil → 400",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/admin/usuarios",
+            "body": { "mode": "raw", "raw": "{\n  \"nombreUsuario\": \"debil\",\n  \"nombreCompleto\": \"Clave Débil\",\n  \"numeroDocumento\": \"12345678\",\n  \"email\": \"debil@email.com\",\n  \"rol\": \"User\",\n  \"clave\": \"123456\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('400 en clave', () => {",
+                  "  pm.response.to.have.status(400);",
+                  "  pm.expect(pm.response.json().errors).to.have.property('clave');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin no puede quitarse su propio rol → 422",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/admin/usuarios/1",
+            "body": { "mode": "raw", "raw": "{\n  \"nombreCompleto\": \"Administrador del Sistema\",\n  \"numeroDocumento\": \"10000001\",\n  \"email\": \"admin@email.com\",\n  \"rol\": \"User\",\n  \"activo\": true\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('422 USUARIO_AUTOGESTION', () => {",
+                  "  pm.response.to.have.status(422);",
+                  "  pm.expect(pm.response.json().code).to.eql('USUARIO_AUTOGESTION');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

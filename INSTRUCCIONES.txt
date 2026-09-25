@@ -1,0 +1,128 @@
+ATLANTIC PEDIDOS - INSTRUCCIONES PARA EJECUTAR EL PROYECTO
+==========================================================
+
+Solución fullstack: API REST en .NET 9 (carpeta backend) y SPA en React (carpeta frontend).
+
+
+1. REQUISITOS
+-------------
+- .NET SDK 9                              (verificar: dotnet --version)
+- Node.js 20 o superior                   (verificar: node --version)
+- SQL Server (Express sirve) con autenticación de Windows
+
+
+2. BASE DE DATOS
+----------------
+La cadena de conexión está en:
+    backend\src\Atlantic.Pedidos.Api\appsettings.json  ->  ConnectionStrings:miConexion
+
+    Data Source=DESKTOP-0V9BORH\SQLEXPRESS;Initial Catalog=BDExamenAtlantic;
+    Integrated Security=True;Encrypt=True;TrustServerCertificate=True;
+
+Si su instancia de SQL Server tiene otro nombre, cambie "Data Source".
+
+No hace falta ejecutar scripts de tablas: al iniciar, la API aplica las
+migraciones automáticamente (crea o completa el esquema y carga los datos
+de prueba).
+
+Si la base BDExamenAtlantic todavía no existe, créela primero:
+
+    sqlcmd -S "DESKTOP-0V9BORH\SQLEXPRESS" -E -C -I -f 65001 -i database\00_crear_base_datos.sql
+
+Opcional: el esquema completo y los datos también están en un script SQL
+que se puede ejecutar varias veces sin duplicar nada:
+
+    sqlcmd -S "DESKTOP-0V9BORH\SQLEXPRESS" -E -C -I -f 65001 -d BDExamenAtlantic -i database\01_esquema_y_datos_idempotente.sql
+
+
+3. CERTIFICADO HTTPS DE DESARROLLO (una sola vez por equipo)
+------------------------------------------------------------
+    dotnet dev-certs https --trust
+
+Acepte el aviso de Windows para confiar en el certificado.
+
+
+4. LEVANTAR LA API
+------------------
+Abrir una terminal en la carpeta del proyecto:
+
+    cd backend
+    dotnet run --project src/Atlantic.Pedidos.Api --launch-profile https
+
+Queda disponible en:
+    API ............ https://localhost:7080   (http://localhost:5080 redirige a HTTPS)
+    Swagger ........ https://localhost:7080/swagger
+    Health check ... https://localhost:7080/health
+
+Dejar esta terminal abierta.
+
+
+5. LEVANTAR EL FRONTEND
+-----------------------
+Abrir una SEGUNDA terminal en la carpeta del proyecto:
+
+    cd frontend
+    npm install
+    npm run certs
+    npm run dev
+
+- "npm install" y "npm run certs" sólo hacen falta la primera vez.
+- "npm run certs" exporta el certificado de desarrollo para que el front
+  se sirva por HTTPS. Si se omite, el front se sirve por HTTP.
+
+Abrir en el navegador:
+
+    https://localhost:5173
+
+
+6. USUARIOS DE PRUEBA
+---------------------
+    Email              Clave    Rol     Permisos
+    admin@email.com    123456   Admin   Todo, incluido eliminar y el Panel de Administración
+    user@email.com     123456   User    Pedidos, clientes y productos; no puede eliminar
+
+La pantalla de login también permite elegir estos usuarios con un clic.
+
+
+7. PRUEBAS
+----------
+Tests unitarios (desde la carpeta backend):
+
+    dotnet test
+
+Colección Postman:
+- Importar postman\Atlantic-Pedidos.postman_collection.json en Postman
+  y ejecutarla completa con el Runner (con la API levantada).
+- O por consola, desde la carpeta del proyecto:
+
+    npx newman run postman/Atlantic-Pedidos.postman_collection.json --insecure
+
+  (--insecure es necesario porque Node no reconoce el certificado de
+  desarrollo de Windows.)
+
+
+8. PROBLEMAS FRECUENTES
+-----------------------
+- "Cannot open database" o error de conexión al iniciar la API:
+  revisar el nombre de la instancia en appsettings.json y que el servicio
+  de SQL Server esté iniciado.
+
+- El navegador marca el sitio como no seguro:
+  ejecutar "dotnet dev-certs https --trust" y luego, en frontend,
+  "npm run certs"; reiniciar "npm run dev".
+
+- "Port 5173 is already in use" o el puerto 7080 ocupado:
+  cerrar la instancia anterior de la API o del front.
+
+- La pantalla de login dice "Tu sesión expiró":
+  es normal si quedó una sesión vieja abierta en el navegador; basta con
+  volver a ingresar.
+
+- Error 429 "Demasiadas solicitudes" en el login:
+  se superaron 10 intentos por minuto; esperar un minuto.
+
+- Usuario bloqueado tras 5 claves incorrectas:
+  se desbloquea solo a los 15 minutos, o un Admin lo desbloquea desde
+  Panel de administración > Usuarios y accesos.
+
+Más detalle de arquitectura, reglas de negocio y endpoints en README.md.

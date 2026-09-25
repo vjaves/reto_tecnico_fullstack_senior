@@ -1,0 +1,15 @@
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.csproj.AssemblyReference.cache
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.GeneratedMSBuildEditorConfig.editorconfig
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.AssemblyInfoInputs.cache
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.AssemblyInfo.cs
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.csproj.CoreCompileInputs.cache
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\bin\Debug\net9.0\Atlantic.Pedidos.Application.deps.json
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\bin\Debug\net9.0\Atlantic.Pedidos.Application.dll
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\bin\Debug\net9.0\Atlantic.Pedidos.Application.pdb
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\bin\Debug\net9.0\Atlantic.Pedidos.Domain.dll
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\bin\Debug\net9.0\Atlantic.Pedidos.Domain.pdb
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.1E162BB1.Up2Date
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.dll
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\refint\Atlantic.Pedidos.Application.dll
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\Atlantic.Pedidos.Application.pdb
+D:\ExamenReact\AtlanticPedidos\backend\src\Atlantic.Pedidos.Application\obj\Debug\net9.0\ref\Atlantic.Pedidos.Application.dll
